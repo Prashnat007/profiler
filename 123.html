@@ -422,24 +422,140 @@
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Image upload handling
-        document.getElementById('imageInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                        currentImage = img;
-                        resetTransformations();
-                        updateCanvas();
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+// Update the image upload handling
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                resetTransformations();
+                // Calculate initial scale to fit image properly
+                const scale = Math.min(
+                    canvas.width / img.width,
+                    canvas.height / img.height
+                ) * 0.8; // 0.8 to leave some padding
+                currentScale = scale;
+                updateCanvas();
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
 
+// Update the updateCanvas function
+function updateCanvas() {
+    if (!currentImage) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f3f4f6'; // Light gray background
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Save context state
+    ctx.save();
+
+    // Get current transformations
+    const rotation = document.getElementById('rotation').value * Math.PI / 180;
+    
+    // Calculate scaled dimensions
+    const scaleX = scale * (isFlippedX ? -1 : 1);
+    const scaleY = scale * (isFlippedY ? -1 : 1);
+    
+    // Calculate center position
+    const centerX = canvas.width / 2 + offsetX;
+    const centerY = canvas.height / 2 + offsetY;
+
+    // Apply transformations from center
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    ctx.scale(scaleX, scaleY);
+
+    // Calculate image dimensions to maintain aspect ratio
+    const aspectRatio = currentImage.width / currentImage.height;
+    let drawWidth, drawHeight;
+    
+    if (aspectRatio > 1) {
+        drawWidth = Math.min(canvas.width * 0.8, currentImage.width);
+        drawHeight = drawWidth / aspectRatio;
+    } else {
+        drawHeight = Math.min(canvas.height * 0.8, currentImage.height);
+        drawWidth = drawHeight * aspectRatio;
+    }
+
+    // Calculate position to center the image
+    const x = -drawWidth / 2;
+    const y = -drawHeight / 2;
+
+    // Apply shape clipping if selected
+    const shape = document.getElementById('shapeSelect').value;
+    if (shape !== 'none') {
+        ctx.beginPath();
+        switch(shape) {
+            case 'circle':
+                ctx.arc(0, 0, Math.min(drawWidth, drawHeight) / 2, 0, Math.PI * 2);
+                break;
+            case 'square':
+                const size = Math.min(drawWidth, drawHeight);
+                ctx.rect(-size/2, -size/2, size, size);
+                break;
+            case 'heart':
+                drawHeart(0, 0, Math.min(drawWidth, drawHeight) / 2);
+                break;
+            case 'hexagon':
+                drawHexagon(0, 0, Math.min(drawWidth, drawHeight) / 2);
+                break;
+            case 'star':
+                drawStar(0, 0, Math.min(drawWidth, drawHeight) / 2);
+                break;
+            case 'diamond':
+                drawDiamond(0, 0, Math.min(drawWidth, drawHeight) / 2);
+                break;
+        }
+        ctx.clip();
+    }
+
+    // Draw the image
+    ctx.drawImage(currentImage, x, y, drawWidth, drawHeight);
+
+    // Apply filters and adjustments
+    applyFiltersAndAdjustments();
+
+    // Draw border if specified
+    const borderWidth = parseInt(document.getElementById('borderWidth').value);
+    if (borderWidth > 0) {
+        drawBorder(x, y, drawWidth, drawHeight, shape);
+    }
+
+    // Draw stickers
+    stickers.forEach(drawSticker);
+
+    // Restore context state
+    ctx.restore();
+}
+
+// Add these variables at the top with other global variables
+let currentScale = 1;
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 3.0;
+
+// Update the zoom functions
+document.getElementById('zoomInBtn').addEventListener('click', function() {
+    if (scale < MAX_SCALE) {
+        scale *= 1.1;
+        updateCanvas();
+    }
+});
+
+document.getElementById('zoomOutBtn').addEventListener('click', function() {
+    if (scale > MIN_SCALE) {
+        scale *= 0.9;
+        updateCanvas();
+    }
+});
         // Event listeners for all controls
         document.getElementById('shapeSelect').addEventListener('change', updateCanvas);
         document.getElementById('borderWidth').addEventListener('input', updateCanvas);
