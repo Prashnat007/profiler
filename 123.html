@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Profile Picture Editor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #818cf8;
+            --background-color: #f3f4f6;
+            --card-background: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            background: var(--card-background);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            background: var(--background-color);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            height: fit-content;
+        }
+
+        .control-group {
+            background: var(--card-background);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .control-group h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group h3 i {
+            font-size: 1.2rem;
+        }
+
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            background: var(--card-background);
+            border-radius: 0.75rem;
+            position: relative;
+        }
+
+        .canvas-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        #previewCanvas {
+            background: transparent;
+        }
+
+        .crop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        .crop-area {
+            position: absolute;
+            border: 2px solid white;
+            cursor: move;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+
+        .crop-handle {
+            width: 10px;
+            height: 10px;
+            background: white;
+            position: absolute;
+            border-radius: 50%;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--background-color);
+            border-radius: 3px;
+            appearance: none;
+            margin: 1rem 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--secondary-color);
+        }
+
+        input[type="color"] {
+            width: 60px;
+            height: 35px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: var(--card-background);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:hover {
+            border-color: var(--primary-color);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn-secondary {
+            background: var(--background-color);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .filter-option {
+            padding: 0.5rem;
+            border: 2px solid transparent;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            background: var(--background-color);
+        }
+
+        .filter-option:hover {
+            border-color: var(--secondary-color);
+        }
+
+        .filter-option.selected {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .sticker-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .sticker-option {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 2px solid transparent;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sticker-option:hover {
+            border-color: var(--primary-color);
+        }
+
+        .tools-container {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tool-btn {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tool-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        #cropSlider {
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <h3><i class="fas fa-upload"></i> Upload Image</h3>
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                <button class="btn btn-secondary" onclick="document.getElementById('imageInput').click()">
+                    <i class="fas fa-image"></i> Choose Image
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3><i class="fas fa-shapes"></i> Shape</h3>
+                <select id="shapeSelect">
+                    <option value="none">Original</option>
+                    <option value="circle">Circle</option>
+                    <option value="square">Square</option>
+                    <option value="heart">Heart</option>
+                    <option value="hexagon">Hexagon</option>
+                    <option value="star">Star</option>
+                    <option value="diamond">Diamond</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <h3><i class="fas fa-border-style"></i> Border</h3>
+                <input type="range" id="borderWidth" min="0" max="20" value="0">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="color" id="borderColor" value="#000000">
+                    <select id="borderStyle">
+                        <option value="solid">Solid</option>
+                        <option value="dashed">Dashed</option>
+                        <option value="dotted">Dotted</option>
+                        <option value="double">Double</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3><i class="fas fa-magic"></i> Filters</h3>
+                <div class="filter-grid">
+                    <div class="filter-option selected" data-filter="none">Normal</div>
+                    <div class="filter-option" data-filter="grayscale">B&W</div>
+                    <div class="filter-option" data-filter="sepia">Sepia</div>
+                    <div class="filter-option" data-filter="vintage">Vintage</div>
+                    <div class="filter-option" data-filter="brightness">Bright</div>
+                    <div class="filter-option" data-filter="contrast">Contrast</div>
+                    <div class="filter-option" data-filter="hue">Hue</div>
+                    <div class="filter-option" data-filter="blur">Blur</div>
+                    <div class="filter-option" data-filter="saturate">Saturate</div>
+                    <div class="filter-option" data-filter="dramatic">Dramatic</div>
+                </div>
+                <input type="range" id="filterIntensity" min="0" max="100" value="50">
+            </div>
+
+            <div class="control-group">
+                <h3><i class="fas fa-adjust"></i> Adjustments</h3>
+                <label>Brightness</label>
+                <input type="range" id="brightness" min="-100" max="100" value="0">
+                <label>Contrast</label>
+                <input type="range" id="contrast" min="-100" max="100" value="0">
+                <label>Saturation</label>
+                <input type="range" id="saturation" min="-100" max="100" value="0">
+            </div>
+
+            <div class="control-group">
+                <h3><i class="fas fa-sync"></i> Rotation & Flip</h3>
+                <input type="range" id="rotation" min="0" max="360" value="0">
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button class="btn btn-secondary" id="flipX">
+                        <i class="fas fa-arrows-alt-h"></i> Flip X
+                    </button>
+                    <button class="btn btn-secondary" id="flipY">
+                        <i class="fas fa-arrows-alt-v"></i> Flip Y
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3><i class="fas fa-smile"></i> Stickers</h3>
+                <div class="sticker-grid">
+                    <div class="sticker-option"><i class="fas fa-crown fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-heart fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-star fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-sun fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-moon fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-rainbow fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-camera fa-2x"></i></div>
+                    <div class="sticker-option"><i class="fas fa-music fa-2x"></i></div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="downloadBtn">
+                <i class="fas fa-download"></i> Download Image
+            </button>
+        </div>
+
+        <div class="preview-container">
+            <div class="canvas-container">
+                <canvas id="previewCanvas" width="600" height="600"></canvas>
+                <div class="crop-overlay">
+                    <div class="crop-area">
+                        <div class="crop-handle" style="top: -5px; left: -5px;"></div>
+                        <div class="crop-handle" style="top: -5px; right: -5px;"></div>
+                        <div class="crop-handle" style="bottom: -5px; left: -5px;"></div>
+                        <div class="crop-handle" style="bottom: -5px; right: -5px;"></div>
+                    </div>
+                </div>
+                <input type="range" id="cropSlider" min="50" max="100" value="100">
+            </div>
+            <div class="tools-container">
+                <button class="tool-btn" id="cropBtn" title="Crop">
+                    <i class="fas fa-crop"></i>
+                </button>
+                <button class="tool-btn" id="zoomInBtn" title="Zoom In">
+                    <i class="fas fa-search-plus"></i>
+                </button>
+                <button class="tool-btn" id="zoomOutBtn" title="Zoom Out">
+                    <i class="fas fa-search-minus"></i>
+                </button>
+                <button class="tool-btn" id="resetBtn" title="Reset">
+                    <i class="fas fa-undo"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentImage = null;
+        let isFlippedX = false;
+        let isFlippedY = false;
+        let scale = 1;
+        let isDragging = false;
+        let startX, startY;
+        let offsetX = 0, offsetY = 0;
+        let cropMode = false;
+        let stickers = [];
+
+        // Initialize canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Image upload handling
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        currentImage = img;
+                        resetTransformations();
+                        updateCanvas();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Event listeners for all controls
+        document.getElementById('shapeSelect').addEventListener('change', updateCanvas);
+        document.getElementById('borderWidth').addEventListener('input', updateCanvas);
+        document.getElementById('borderColor').addEventListener('input', updateCanvas);
+        document.getElementById('borderStyle').addEventListener('change', updateCanvas);
+        document.getElementById('rotation').addEventListener('input', updateCanvas);
+        document.getElementById('brightness').addEventListener('input', updateCanvas);
+        document.getElementById('contrast').addEventListener('input', updateCanvas);
+        document.getElementById('saturation').addEventListener('input', updateCanvas);
+        document.getElementById('filterIntensity').addEventListener('input', updateCanvas);
+
+        // Filter options click handling
+        document.querySelectorAll('.filter-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                updateCanvas();
+            });
+        });
+
+        // Sticker handling
+        document.querySelectorAll('.sticker-option').forEach(sticker => {
+            sticker.addEventListener('click', function() {
+                const icon = this.innerHTML;
+                stickers.push({
+                    content: icon,
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    scale: 1,
+                    rotation: 0
+                });
+                updateCanvas();
+            });
+        });
+
+        // Flip buttons
+        document.getElementById('flipX').addEventListener('click', function() {
+            isFlippedX = !isFlippedX;
+            updateCanvas();
+        });
+
+        document.getElementById('flipY').addEventListener('click', function() {
+            isFlippedY = !isFlippedY;
+            updateCanvas();
+        });
+
+        // Zoom buttons
+        document.getElementById('zoomInBtn').addEventListener('click', function() {
+            scale *= 1.1;
+            updateCanvas();
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', function() {
+            scale *= 0.9;
+            updateCanvas();
+        });
+
+        // Reset button
+        document.getElementById('resetBtn').addEventListener('click', resetTransformations);
+
+        // Crop button
+        document.getElementById('cropBtn').addEventListener('click', function() {
+            cropMode = !cropMode;
+            document.querySelector('.crop-overlay').style.display = cropMode ? 'block' : 'none';
+            document.getElementById('cropSlider').style.display = cropMode ? 'block' : 'none';
+        });
+
+        // Canvas drag handling
+        canvas.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            startX = e.clientX - offsetX;
+            startY = e.clientY - offsetY;
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                offsetX = e.clientX - startX;
+                offsetY = e.clientY - startY;
+                updateCanvas();
+            }
+        });
+
+        canvas.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            isDragging = false;
+        });
+
+        function resetTransformations() {
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+            isFlippedX = false;
+            isFlippedY = false;
+            document.getElementById('rotation').value = 0;
+            document.getElementById('brightness').value = 0;
+            document.getElementById('contrast').value = 0;
+            document.getElementById('saturation').value = 0;
+            document.getElementById('filterIntensity').value = 50;
+            document.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector('[data-filter="none"]').classList.add('selected');
+            stickers = [];
+            updateCanvas();
+        }
+
+        function drawHeart(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size * 0.7);
+            ctx.bezierCurveTo(
+                x + size, y - size,
+                x + size, y + size * 0.3,
+                x, y + size
+            );
+            ctx.bezierCurveTo(
+                x - size, y + size * 0.3,
+                x - size, y - size,
+                x, y - size * 0.7
+            );
+        }
+
+        function drawHexagon(x, y, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const px = x + size * Math.cos(angle);
+                const py = y + size * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+        }
+
+        function drawStar(x, y, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const angle = (i * Math.PI) / 5;
+                const radius = i % 2 === 0 ? size : size * 0.4;
+                const px = x + radius * Math.cos(angle);
+                const py = y + radius * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+        }
+
+        function drawDiamond(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x + size, y);
+            ctx.lineTo(x, y + size);
+            ctx.lineTo(x - size, y);
+            ctx.closePath();
+        }
+
+        function updateCanvas() {
+            if (!currentImage) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Save context state
+            ctx.save();
+
+            // Apply transformations
+            ctx.translate(canvas.width/2 + offsetX, canvas.height/2 + offsetY);
+            ctx.scale(scale * (isFlippedX ? -1 : 1), scale * (isFlippedY ? -1 : 1));
+            ctx.rotate(document.getElementById('rotation').value * Math.PI / 180);
+
+            // Calculate image dimensions
+            const scale = Math.min(
+                (canvas.width - 40) / currentImage.width,
+                (canvas.height - 40) / currentImage.height
+            );
+            const width = currentImage.width * scale;
+            const height = currentImage.height * scale;
+            const x = -width / 2;
+            const y = -height / 2;
+
+            // Apply shape clipping
+            const shape = document.getElementById('shapeSelect').value;
+            if (shape !== 'none') {
+                ctx.beginPath();
+                switch(shape) {
+                    case 'circle':
+                        ctx.arc(0, 0, Math.min(width, height)/2, 0, Math.PI * 2);
+                        break;
+                    case 'square':
+                        const size = Math.min(width, height);
+                        ctx.rect(-size/2, -size/2, size, size);
+                        break;
+                    case 'heart':
+                        drawHeart(0, 0, Math.min(width, height)/2);
+                        break;
+                    case 'hexagon':
+                        drawHexagon(0, 0, Math.min(width, height)/2);
+                        break;
+                    case 'star':
+                        drawStar(0, 0, Math.min(width, height)/2);
+                        break;
+                    case 'diamond':
+                        drawDiamond(0, 0, Math.min(width, height)/2);
+                        break;
+                }
+                ctx.clip();
+            }
+
+            // Draw image
+            ctx.drawImage(currentImage, x, y, width, height);
+
+            // Apply filters and adjustments
+            applyFiltersAndAdjustments();
+
+            // Draw border
+            const borderWidth = document.getElementById('borderWidth').value;
+            if (borderWidth > 0) {
+                drawBorder(x, y, width, height, shape);
+            }
+
+            // Draw stickers
+            stickers.forEach(drawSticker);
+
+            // Restore context state
+            ctx.restore();
+        }
+
+        function applyFiltersAndAdjustments() {
+            const selectedFilter = document.querySelector('.filter-option.selected').dataset.filter;
+            const intensity = document.getElementById('filterIntensity').value / 100;
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+
+            // Apply selected filter
+            if (selectedFilter !== 'none') {
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const r = pixels[i];
+                    const g = pixels[i + 1];
+                    const b = pixels[i + 2];
+
+                    switch(selectedFilter) {
+                        case 'grayscale':
+                            const avg = (r + g + b) / 3;
+                            pixels[i] = pixels[i + 1] = pixels[i + 2] = avg;
+                            break;
+                        case 'sepia':
+                            pixels[i] = (r * 0.393 + g * 0.769 + b * 0.189) * intensity + r * (1 - intensity);
+                            pixels[i + 1] = (r * 0.349 + g * 0.686 + b * 0.168) * intensity + g * (1 - intensity);
+                            pixels[i + 2] = (r * 0.272 + g * 0.534 + b * 0.131) * intensity + b * (1 - intensity);
+                            break;
+                        case 'vintage':
+                            pixels[i] = r * 1.1 + g * 0.1 + b * 0.1;
+                            pixels[i + 1] = r * 0.1 + g * 1.1 + b * 0.1;
+                            pixels[i + 2] = r * 0.1 + g * 0.1 + b * 0.9;
+                            break;
+                        case 'dramatic':
+                            pixels[i] = Math.min(255, r * 1.5);
+                            pixels[i + 1] = g * 0.7;
+                            pixels[i + 2] = b * 0.7;
+                            break;
+                    }
+                }
+            }
+
+            // Apply adjustments
+            const brightness = document.getElementById('brightness').value;
+            const contrast = document.getElementById('contrast').value;
+            const saturation = document.getElementById('saturation').value;
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                // Brightness
+                pixels[i] = Math.min(255, pixels[i] + brightness);
+                pixels[i + 1] = Math.min(255, pixels[i + 1] + brightness);
+                pixels[i + 2] = Math.min(255, pixels[i + 2] + brightness);
+
+                // Contrast
+                const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                pixels[i] = factor * (pixels[i] - 128) + 128;
+                pixels[i + 1] = factor * (pixels[i + 1] - 128) + 128;
+                pixels[i + 2] = factor * (pixels[i + 2] - 128) + 128;
+
+                // Saturation
+                const avg = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+                pixels[i] = avg + (pixels[i] - avg) * (1 + saturation/100);
+                pixels[i + 1] = avg + (pixels[i + 1] - avg) * (1 + saturation/100);
+                pixels[i + 2] = avg + (pixels[i + 2] - avg) * (1 + saturation/100);
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function drawBorder(x, y, width, height, shape) {
+            const borderWidth = document.getElementById('borderWidth').value;
+            const borderStyle = document.getElementById('borderStyle').value;
+            ctx.strokeStyle = document.getElementById('borderColor').value;
+            ctx.lineWidth = borderWidth;
+
+            if (borderStyle === 'dashed') {
+                ctx.setLineDash([15, 5]);
+            } else if (borderStyle === 'dotted') {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
+
+            if (borderStyle === 'double') {
+                ctx.lineWidth = borderWidth / 2;
+                ctx.stroke();
+                ctx.lineWidth = borderWidth / 2;
+                const inset = borderWidth / 2;
+                if (shape !== 'none') {
+                    ctx.stroke();
+                } else {
+                    ctx.strokeRect(x + inset, y + inset, width - 2*inset, height - 2*inset);
+                }
+            }
+
+            if (shape !== 'none') {
+                ctx.stroke();
+            } else {
+                ctx.strokeRect(x, y, width, height);
+            }
+        }
+
+        function drawSticker(sticker) {
+            ctx.save();
+            ctx.translate(sticker.x, sticker.y);
+            ctx.scale(sticker.scale, sticker.scale);
+            ctx.rotate(sticker.rotation);
+            
+            const temp = document.createElement('div');
+            temp.innerHTML = sticker.content;
+            const icon = temp.firstChild;
+            
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '30px FontAwesome';
+            ctx.fillText(icon.textContent, 0, 0);
+            
+            ctx.restore();
+        }
+
+        // Download functionality
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            const link = document.createElement('a');
+            link.download = 'profile-picture.png';
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+             link.click();
+            document.body.removeChild(link);
+        });
+  </script>
+</body>
+</html>
